@@ -1,5 +1,8 @@
 name: Sync Fork
 
+permissions:
+  contents: write
+  
 on:
   schedule:
     - cron: "0 */6 * * *"   # 每6小時同步一次
