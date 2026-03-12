@@ -108,7 +108,7 @@ export class PowerShellInstaller {
    */
   private generateProfileConfig(scriptPath: string): string {
     return [
-      '# OpenSpec shell 补全配置',
+      '# OpenSpec-cn shell 补全配置',
       `if (Test-Path "${scriptPath}") {`,
       `    . "${scriptPath}"`,
       '}',
@@ -147,18 +147,20 @@ export class PowerShellInstaller {
         // Add OpenSpec completion configuration with markers
         const openspecBlock = [
           '',
-          '# OPENSPEC:START - OpenSpec 补全（管理块，请勿手动编辑）',
+          '# OPENSPEC:START - OpenSpec-cn 补全（管理块，请勿手动编辑）',
           scriptLine,
           '# OPENSPEC:END',
           '',
         ].join('\n');
 
         const newContent = profileContent + openspecBlock;
-        await fs.writeFile(profilePath, newContent, 'utf-8');
+        // Use UTF-8 with BOM for Windows PowerShell 5.1 compatibility
+        const bomContent = '\uFEFF' + newContent;
+        await fs.writeFile(profilePath, bomContent, 'utf-8');
         anyConfigured = true;
       } catch (error) {
         // Continue to next profile if this one fails
-        console.warn(`Warning: Could not configure ${profilePath}: ${error}`);
+        console.warn(`警告：无法配置 ${profilePath}: ${error}`);
       }
     }
 
@@ -196,7 +198,7 @@ export class PowerShellInstaller {
 
         const endIndex = profileContent.indexOf(endMarker, startIndex);
         if (endIndex === -1) {
-          console.warn(`Warning: Found start marker but no end marker in ${profilePath}`);
+          console.warn(`警告：在 ${profilePath} 中找到开始标记但未找到结束标记`);
           continue;
         }
 
@@ -206,11 +208,12 @@ export class PowerShellInstaller {
 
         // Clean up extra newlines
         const newContent = (beforeBlock.trimEnd() + '\n' + afterBlock.trimStart()).trim() + '\n';
-
-        await fs.writeFile(profilePath, newContent, 'utf-8');
+        // Use UTF-8 with BOM for Windows PowerShell 5.1 compatibility
+        const bomContent = '\uFEFF' + newContent;
+        await fs.writeFile(profilePath, bomContent, 'utf-8');
         anyRemoved = true;
       } catch (error) {
-        console.warn(`Warning: Could not clean ${profilePath}: ${error}`);
+        console.warn(`警告：无法清理 ${profilePath}: ${error}`);
       }
     }
 
@@ -230,7 +233,11 @@ export class PowerShellInstaller {
       // Check if already installed with same content
       let isUpdate = false;
       try {
-        const existingContent = await fs.readFile(targetPath, 'utf-8');
+        let existingContent = await fs.readFile(targetPath, 'utf-8');
+        // Remove BOM if present for comparison (BOM is added on write for Windows compatibility)
+        if (existingContent.charCodeAt(0) === 0xfeff) {
+          existingContent = existingContent.slice(1);
+        }
         if (existingContent === completionScript) {
           // Already installed and up to date
           return {
@@ -247,7 +254,7 @@ export class PowerShellInstaller {
         isUpdate = true;
       } catch (error: any) {
         // File doesn't exist or can't be read, proceed with installation
-        console.debug(`Unable to read existing completion file at ${targetPath}: ${error.message}`);
+        console.debug(`无法在 ${targetPath} 读取现有的补全文件: ${error.message}`);
       }
 
       // Ensure the directory exists
@@ -257,8 +264,9 @@ export class PowerShellInstaller {
       // Backup existing file if updating
       const backupPath = isUpdate ? await this.backupExistingFile(targetPath) : undefined;
 
-      // Write the completion script
-      await fs.writeFile(targetPath, completionScript, 'utf-8');
+      // Write the completion script with UTF-8 BOM for Windows PowerShell 5.1 compatibility
+      const bomCompletionScript = '\uFEFF' + completionScript;
+      await fs.writeFile(targetPath, bomCompletionScript, 'utf-8');
 
       // Auto-configure PowerShell profile
       const profileConfigured = await this.configureProfile(targetPath);
@@ -289,7 +297,7 @@ export class PowerShellInstaller {
     } catch (error) {
       return {
         success: false,
-        message: `Failed to install completion script: ${error instanceof Error ? error.message : String(error)}`,
+        message: `安装补全脚本失败：${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
@@ -308,7 +316,7 @@ export class PowerShellInstaller {
       '',
       `如需启用补全，请在您的 PowerShell 配置文件 (${profilePath}) 中添加以下内容：`,
       '',
-      '  # 加载 OpenSpec 补全',
+      '  # 加载 OpenSpec-cn 补全',
       `  if (Test-Path "${installedPath}") {`,
       `      . "${installedPath}"`,
       '  }',
